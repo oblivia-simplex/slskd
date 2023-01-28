@@ -13,7 +13,7 @@ RUN sh ./bin/build --web-only --version $VERSION
 # note: this needs to be pinned to an amd64 image in order to publish armv7 binaries
 # https://github.com/dotnet/dotnet-docker/issues/1537#issuecomment-615269150
 FROM mcr.microsoft.com/dotnet/sdk:7.0-bullseye-slim-amd64 AS publish
-ARG TARGETPLATFORM
+ARG TARGETPLATFORM=linux/amd64
 ARG VERSION=0.0.1.65534-local
 
 WORKDIR /slskd
@@ -32,7 +32,7 @@ RUN bash ./bin/publish --no-prebuild --platform $TARGETPLATFORM --version $VERSI
 
 # application
 FROM mcr.microsoft.com/dotnet/runtime-deps:7.0-bullseye-slim AS slskd
-ARG TARGETPLATFORM
+ARG TARGETPLATFORM=linux/amd64
 ARG TAG=0.0.1
 ARG VERSION=0.0.1.65534-local
 ARG REVISION=0
@@ -41,6 +41,8 @@ ARG BUILD_DATE
 RUN apt-get update && apt-get install -y \
   wget \
   tini \
+  openvpn \
+  htop \
   && rm -rf /var/lib/apt/lists/*
 
 RUN bash -c 'mkdir -p /app/{incomplete,downloads} \ 
@@ -78,5 +80,9 @@ LABEL org.opencontainers.image.title=slskd \
 
 WORKDIR /slskd
 COPY --from=publish /slskd/dist/${TARGETPLATFORM} .
+ADD launch.sh .
 
-ENTRYPOINT ["/usr/bin/tini", "--", "./slskd"]
+
+ENTRYPOINT ["/usr/bin/tini", "--"]
+
+CMD ["./launch.sh"]
